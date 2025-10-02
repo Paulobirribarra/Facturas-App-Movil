@@ -1,0 +1,67 @@
+# Archivos de Android Studio
+*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+/.idea/deploymentTargetDropDown.xml
+/.idea/gradle.xml
+/.idea/misc.xml
+/.idea/vcs.xml
+/.idea/shelf
+.DS_Store
+
+# Directorios de build
+/build
+/captures
+.externalNativeBuild
+.cxx
+/app/build/
+/app/release/
+
+# Archivos del usuario específicos
+local.properties
+keystore.properties
+*.jks
+*.keystore
+
+# Archivos con datos sensibles - NUNCA SUBIR
+*.json
+secrets.properties
+config.properties
+
+# Logs
+*.log
+
+# Archivos temporales
+*.tmp
+*.temp
+*~
+
+# Archivos de Android Lint
+lint-results.xml
+lint-results.html
+
+# Proguard
+proguard/
+
+# Archivos APK
+*.apk
+*.aab
+
+# NDK
+obj/
+
+# IntelliJ IDEA
+*.iws
+out/
+
+# Emulador
+.android/
+
+# Archivos específicos del proyecto que no deben subirse
+GUIA-ANDROID-COMPLETA.txt

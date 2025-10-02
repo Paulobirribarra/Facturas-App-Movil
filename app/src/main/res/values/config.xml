@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Configuración de desarrollo - cambiar para producción -->
+    <!-- Para desarrollo local, cambia la IP por la tuya -->
+    <string name="api_base_url">http://10.0.2.2:8000/api/</string>
+    <string name="api_base_url_emulator">http://10.0.2.2:8000/api/</string>
+
+    <!-- Para dispositivo físico en la misma red -->
+    <!-- <string name="api_base_url">http://TU_IP_LOCAL:8000/api/</string> -->
+
+    <!-- Para producción -->
+    <!-- <string name="api_base_url">https://tu-dominio.com/api/</string> -->
+
+    <!-- Configuración de debug -->
+    <bool name="debug_mode">true</bool>
+    <bool name="enable_http_logs">true</bool>
+</resources>
+

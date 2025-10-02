@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- Header con información del usuario -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            app:cardCornerRadius="8dp"
+            app:cardElevation="4dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:id="@+id/textWelcome"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Bienvenido"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:textColor="#333" />
+
+                <TextView
+                    android:id="@+id/textUserInfo"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Información del usuario"
+                    android:textSize="14sp"
+                    android:textColor="#666" />
+
+                <TextView
+                    android:id="@+id/textEmpresaActual"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="Empresa actual"
+                    android:textSize="14sp"
+                    android:textColor="#666" />
+
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <!-- Sección de Facturas -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Facturas de Ventas"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="#333"
+            android:layout_marginBottom="12dp" />
+
+        <!-- Botones de acciones -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="16dp">
+
+            <Button
+                android:id="@+id/buttonVerFacturas"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Ver Todas las Facturas"
+                android:background="@color/teal_700"
+                android:textColor="@android:color/white"
+                android:layout_marginBottom="8dp"
+                android:padding="12dp" />
+
+            <Button
+                android:id="@+id/buttonFacturasPendientes"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Facturas Pendientes"
+                android:background="@color/material_dynamic_primary80"
+                android:textColor="@android:color/white"
+                android:layout_marginBottom="8dp"
+                android:padding="12dp" />
+
+            <Button
+                android:id="@+id/buttonFacturasPagadas"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Facturas Pagadas"
+                android:background="@color/material_dynamic_secondary80"
+                android:textColor="@android:color/white"
+                android:layout_marginBottom="8dp"
+                android:padding="12dp" />
+
+        </LinearLayout>
+
+        <!-- Progress Bar -->
+        <ProgressBar
+            android:id="@+id/progressBar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:visibility="gone" />
+
+        <!-- RecyclerView para mostrar las facturas -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerViewFacturas"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp" />
+
+        <!-- Información de paginación -->
+        <LinearLayout
+            android:id="@+id/layoutPaginacion"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="12dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/textPaginaInfo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Página 1 de 10 (150 facturas)"
+                android:textSize="11sp"
+                android:textColor="#666"
+                android:gravity="center"
+                android:padding="4dp" />
+
+            <!-- Botones de paginación compactos -->
+            <LinearLayout
+                android:id="@+id/layoutBotonesPaginacion"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="4dp">
+
+                <Button
+                    android:id="@+id/buttonPaginaAnterior"
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_weight="1"
+                    android:text="← Anterior"
+                    android:textSize="12sp"
+                    android:background="@color/material_dynamic_secondary80"
+                    android:textColor="@android:color/white"
+                    android:layout_marginEnd="4dp"
+                    android:enabled="false" />
+
+                <Button
+                    android:id="@+id/buttonCargarMas"
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_weight="1"
+                    android:text="Cargar Más"
+                    android:textSize="12sp"
+                    android:background="@color/teal_700"
+                    android:textColor="@android:color/white"
+                    android:layout_marginStart="2dp"
+                    android:layout_marginEnd="2dp" />
+
+                <Button
+                    android:id="@+id/buttonPaginaSiguiente"
+                    android:layout_width="0dp"
+                    android:layout_height="36dp"
+                    android:layout_weight="1"
+                    android:text="Siguiente →"
+                    android:textSize="12sp"
+                    android:background="@color/material_dynamic_secondary80"
+                    android:textColor="@android:color/white"
+                    android:layout_marginStart="4dp" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- Botón de cambiar empresa -->
+        <Button
+            android:id="@+id/buttonCambiarEmpresa"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Cambiar Empresa"
+            android:background="@color/material_dynamic_tertiary80"
+            android:textColor="@android:color/white"
+            android:layout_marginTop="16dp"
+            android:padding="12dp" />
+
+        <!-- Botón de logout -->
+        <Button
+            android:id="@+id/buttonLogout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Cerrar Sesión"
+            android:background="@android:color/holo_red_dark"
+            android:textColor="@android:color/white"
+            android:layout_marginTop="8dp"
+            android:padding="12dp" />
+
+    </LinearLayout>
+</ScrollView>
