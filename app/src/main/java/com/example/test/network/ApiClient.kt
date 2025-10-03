@@ -7,15 +7,20 @@ import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
-import com.example.test.R
+import com.example.test.utils.NetworkConfigManager
 
 object ApiClient {
     private var baseUrl: String? = null
     private var enableLogs: Boolean = false
 
-    fun initialize(context: Context) {
-        baseUrl = context.getString(R.string.api_base_url)
-        enableLogs = context.resources.getBoolean(R.bool.enable_http_logs)
+    fun initialize(appContext: Context) {
+        baseUrl = NetworkConfigManager.getBaseUrl(appContext)
+        enableLogs = true // Always enabled for debugging
+
+        Log.d("ApiClient", "=== API CLIENT INITIALIZATION ===")
+        Log.d("ApiClient", "Base URL configured: $baseUrl")
+        Log.d("ApiClient", "Is emulator: ${NetworkConfigManager.isEmulator()}")
+        Log.d("ApiClient", "Auto-detection enabled: ${NetworkConfigManager.isAutoDetectionEnabled(appContext)}")
     }
 
     private val loggingInterceptor = HttpLoggingInterceptor { message ->
@@ -32,7 +37,7 @@ object ApiClient {
 
             if (enableLogs) {
                 val empresaId = request.header("X-Empresa-ID")
-                Log.d("ApiClient", "=== ENVIANDO REQUEST ===")
+                Log.d("ApiClient", "=== SENDING REQUEST ===")
                 Log.d("ApiClient", "URL: ${request.url}")
                 Log.d("ApiClient", "Method: ${request.method}")
                 Log.d("ApiClient", "X-Empresa-ID Header: $empresaId")
@@ -53,23 +58,35 @@ object ApiClient {
         }
         .addInterceptor(loggingInterceptor)
         .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(240, TimeUnit.SECONDS)  // 4 minutes for SII queries that can take up to 3 minutes
         .writeTimeout(30, TimeUnit.SECONDS)
+        .callTimeout(300, TimeUnit.SECONDS)  // 5 minutes total timeout for long operations
         .build()
 
-    val retrofit: Retrofit by lazy {
-        if (baseUrl == null) {
-            throw IllegalStateException("ApiClient no ha sido inicializado. Llama a ApiClient.initialize(context) primero.")
+    private var _retrofit: Retrofit? = null
+    private var _apiService: ApiService? = null
+
+    val retrofit: Retrofit
+        get() {
+            if (_retrofit == null) {
+                if (baseUrl == null) {
+                    throw IllegalStateException("ApiClient has not been initialized. Call ApiClient.initialize(context) first.")
+                }
+
+                _retrofit = Retrofit.Builder()
+                    .baseUrl(baseUrl!!)
+                    .client(okHttpClient)
+                    .addConverterFactory(GsonConverterFactory.create())
+                    .build()
+            }
+            return _retrofit!!
         }
 
-        Retrofit.Builder()
-            .baseUrl(baseUrl!!)
-            .client(okHttpClient)
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
-    }
-
-    val apiService: ApiService by lazy {
-        retrofit.create(ApiService::class.java)
-    }
+    val apiService: ApiService
+        get() {
+            if (_apiService == null) {
+                _apiService = retrofit.create(ApiService::class.java)
+            }
+            return _apiService!!
+        }
 }

@@ -30,27 +30,23 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                 _error.value = null
 
                 val response = repository.login(email, password, "Android App")
-
                 if (response.isSuccessful) {
-                    response.body()?.let { loginResponse ->
-                        if (loginResponse.success) {
-                            // Guardar sesión
-                            val empresaId = loginResponse.user.empresas.firstOrNull()?.id
-                            sessionManager.saveSession(
-                                token = loginResponse.token,
-                                user = loginResponse.user,
-                                empresaId = empresaId
-                            )
-                            _loginResult.value = true
-                        } else {
-                            _error.value = loginResponse.message
-                        }
+                    val loginResponse = response.body()!!
+                    if (loginResponse.success && loginResponse.user != null && loginResponse.token != null) {
+                        // Guardar datos de sesión
+                        sessionManager.saveSession(
+                            token = loginResponse.token,
+                            user = loginResponse.user
+                        )
+                        _loginResult.value = true
+                    } else {
+                        _error.value = loginResponse.message ?: "Error en el login"
                     }
                 } else {
-                    _error.value = "Error de autenticación: ${response.code()}"
+                    _error.value = "Error de conexión: ${response.code()}"
                 }
             } catch (e: Exception) {
-                _error.value = "Error de conexión: ${e.message}"
+                _error.value = "Error de red: ${e.message}"
             } finally {
                 _loading.value = false
             }

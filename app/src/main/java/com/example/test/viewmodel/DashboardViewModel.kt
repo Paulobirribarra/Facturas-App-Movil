@@ -39,7 +39,7 @@ class DashboardViewModel(application: Application) : PaginatedViewModel<FacturaV
 
         val user = sessionManager.getUser()
         val empresa = user?.empresas?.find { it.id == empresaId }
-        Log.d("DashboardViewModel", "Empresa seleccionada: ${empresa?.razon_social} (ID: $empresaId)")
+        Log.d("DashboardViewModel", "Empresa seleccionada: ${empresa?.razonSocial} (ID: $empresaId)")
     }
 
     // Implementación del método abstracto del PaginatedViewModel
@@ -54,27 +54,17 @@ class DashboardViewModel(application: Application) : PaginatedViewModel<FacturaV
         )
 
         if (response.isSuccessful) {
-            response.body()?.let { facturasResponse ->
-                Log.d("DashboardViewModel", "=== RESPUESTA EXITOSA ===")
-                Log.d("DashboardViewModel", "Facturas encontradas: ${facturasResponse.facturas.size}")
-                Log.d("DashboardViewModel", "Total en BD: ${facturasResponse.pagination.total}")
-                Log.d("DashboardViewModel", "Página actual: ${facturasResponse.pagination.currentPage}")
-                Log.d("DashboardViewModel", "Total páginas: ${facturasResponse.pagination.lastPage}")
-
-                return Pair(facturasResponse.facturas, facturasResponse.pagination)
-            }
+            val body = response.body()!!
+            return Pair(body.facturas, body.pagination)
+        } else {
+            throw Exception("Error al cargar facturas: ${response.message()}")
         }
-
-        throw Exception("Error al cargar facturas: ${response.code()}")
-    }
-
-    override fun handleError(error: Exception) {
-        _error.value = error.message
     }
 
     // Métodos convenientes para cargar facturas con filtros específicos
     fun loadAllFacturas() {
-        loadItems()
+        Log.d("DashboardViewModel", "Cargando todas las facturas...")
+        loadItems(mapOf("estado" to null))
     }
 
     fun loadFacturasPendientes() {
@@ -82,6 +72,7 @@ class DashboardViewModel(application: Application) : PaginatedViewModel<FacturaV
     }
 
     fun loadFacturasPagadas() {
+        Log.d("DashboardViewModel", "Cargando facturas pagadas...")
         loadItems(mapOf("estado" to "pagada"))
     }
 

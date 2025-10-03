@@ -10,12 +10,15 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.test.adapters.FacturasAdapter
 import com.example.test.models.User
+import com.example.test.network.ApiClient
 import com.example.test.utils.SessionManager
 import com.example.test.viewmodel.DashboardViewModel
+import kotlinx.coroutines.launch
 
 class DashboardActivity : AppCompatActivity() {
 
@@ -36,14 +39,9 @@ class DashboardActivity : AppCompatActivity() {
     private fun setupViews() {
         Log.d("DashboardActivity", "Configurando vistas del dashboard...")
 
-        findViewById<Button>(R.id.buttonVerFacturas).setOnClickListener {
+        findViewById<Button>(R.id.buttonTodasFacturas).setOnClickListener {
             Log.d("DashboardActivity", "Botón 'Ver Todas las Facturas' presionado")
             dashboardViewModel.loadAllFacturas()
-        }
-
-        findViewById<Button>(R.id.buttonFacturasPendientes).setOnClickListener {
-            Log.d("DashboardActivity", "Botón 'Facturas Pendientes' presionado")
-            dashboardViewModel.loadFacturasPendientes()
         }
 
         findViewById<Button>(R.id.buttonFacturasPagadas).setOnClickListener {
@@ -52,27 +50,14 @@ class DashboardActivity : AppCompatActivity() {
         }
 
         // Botones de paginación
-        findViewById<Button>(R.id.buttonCargarMas).setOnClickListener {
-            Log.d("DashboardActivity", "Botón 'Cargar Más' presionado")
-            dashboardViewModel.loadNextPage()
-        }
-
-        findViewById<Button>(R.id.buttonPaginaAnterior).setOnClickListener {
+        findViewById<Button>(R.id.buttonAnterior).setOnClickListener {
             Log.d("DashboardActivity", "Botón 'Página Anterior' presionado")
             dashboardViewModel.loadPreviousPage()
         }
 
-        findViewById<Button>(R.id.buttonPaginaSiguiente).setOnClickListener {
+        findViewById<Button>(R.id.buttonSiguiente).setOnClickListener {
             Log.d("DashboardActivity", "Botón 'Página Siguiente' presionado")
             dashboardViewModel.loadNextPage()
-        }
-
-        findViewById<Button>(R.id.buttonCambiarEmpresa).setOnClickListener {
-            Log.d("DashboardActivity", "Botón 'Cambiar Empresa' presionado")
-            // Navegar de vuelta al selector de empresas sin cerrar sesión
-            val intent = Intent(this, EmpresaSelectorActivity::class.java)
-            startActivity(intent)
-            finish()
         }
 
         findViewById<Button>(R.id.buttonLogout).setOnClickListener {
@@ -82,6 +67,12 @@ class DashboardActivity : AppCompatActivity() {
             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             startActivity(intent)
             finish()
+        }
+
+        findViewById<Button>(R.id.buttonConsultaSII).setOnClickListener {
+            Log.d("DashboardActivity", "Botón 'Consulta SII' presionado")
+            // Primero validar acceso SII antes de navegar
+            mostrarDialogoValidacionSII()
         }
     }
 
@@ -127,7 +118,7 @@ class DashboardActivity : AppCompatActivity() {
             val user = dashboardViewModel.user.value
             val empresa = user?.empresas?.find { it.id == empresaId }
             findViewById<TextView>(R.id.textEmpresaActual).text =
-                "Empresa: ${empresa?.razon_social ?: "No seleccionada"}"
+                "Empresa: ${empresa?.razonSocial ?: "No seleccionada"}"
 
             // Cargar facturas automáticamente cuando se establece la empresa
             if (empresaId != null) {
@@ -143,12 +134,8 @@ class DashboardActivity : AppCompatActivity() {
 
         // Observar el loading del PaginatedViewModel
         dashboardViewModel.loading.observe(this) { isLoading ->
-            findViewById<ProgressBar>(R.id.progressBar).visibility =
-                if (isLoading) View.VISIBLE else View.GONE
-
-            // Deshabilitar botones mientras carga
-            findViewById<Button>(R.id.buttonVerFacturas).isEnabled = !isLoading
-            findViewById<Button>(R.id.buttonFacturasPendientes).isEnabled = !isLoading
+            // Usar elementos que existen en el layout
+            findViewById<Button>(R.id.buttonTodasFacturas).isEnabled = !isLoading
             findViewById<Button>(R.id.buttonFacturasPagadas).isEnabled = !isLoading
         }
 
@@ -163,44 +150,119 @@ class DashboardActivity : AppCompatActivity() {
         // Observar la paginación del PaginatedViewModel
         dashboardViewModel.pagination.observe(this) { pagination ->
             pagination?.let {
-                // Mostrar información de paginación
+                // Mostrar información de paginación usando elementos que existen
                 val layoutPaginacion = findViewById<View>(R.id.layoutPaginacion)
-                val buttonAnterior = findViewById<Button>(R.id.buttonPaginaAnterior)
-                val buttonSiguiente = findViewById<Button>(R.id.buttonPaginaSiguiente)
-                val buttonCargarMas = findViewById<Button>(R.id.buttonCargarMas)
-                val textPaginaInfo = findViewById<TextView>(R.id.textPaginaInfo)
+                val buttonAnterior = findViewById<Button>(R.id.buttonAnterior)
+                val buttonSiguiente = findViewById<Button>(R.id.buttonSiguiente)
+                val textPaginaActual = findViewById<TextView>(R.id.textPaginaActual)
 
                 // Mostrar controles de paginación
                 layoutPaginacion.visibility = View.VISIBLE
 
-                // Información simple y compacta
-                val totalFacturas = dashboardViewModel.getCurrentItemsCount()
-                textPaginaInfo.text = "Página ${it.currentPage} de ${it.lastPage} • ${totalFacturas} de ${it.total} facturas"
+                // Información de paginación
+                textPaginaActual.text = "Página ${it.currentPage} de ${it.lastPage}"
 
                 // Habilitar/deshabilitar botones según la página actual
                 buttonAnterior.isEnabled = dashboardViewModel.canLoadPrevious()
                 buttonSiguiente.isEnabled = dashboardViewModel.canLoadNext()
-                buttonCargarMas.isEnabled = dashboardViewModel.canLoadNext()
 
-                // Texto simple del botón "Cargar Más"
-                buttonCargarMas.text = if (dashboardViewModel.canLoadNext()) "Cargar Más" else "Todas cargadas"
-
-                Log.d("DashboardActivity", "Paginación: ${it.currentPage}/${it.lastPage} - Mostrando $totalFacturas de ${it.total}")
+                Log.d("DashboardActivity", "Paginación: ${it.currentPage}/${it.lastPage}")
             } ?: run {
                 // Ocultar controles si no hay datos de paginación
                 findViewById<View>(R.id.layoutPaginacion).visibility = View.GONE
             }
         }
+    }
 
-        // Observar loadingMore para deshabilitar botones mientras carga más datos
-        dashboardViewModel.loadingMore.observe(this) { isLoadingMore ->
-            findViewById<Button>(R.id.buttonCargarMas).isEnabled = !isLoadingMore && dashboardViewModel.canLoadNext()
-            findViewById<Button>(R.id.buttonPaginaSiguiente).isEnabled = !isLoadingMore && dashboardViewModel.canLoadNext()
-            findViewById<Button>(R.id.buttonPaginaAnterior).isEnabled = !isLoadingMore && dashboardViewModel.canLoadPrevious()
+    private fun mostrarDialogoValidacionSII() {
+        Log.d("DashboardActivity", "Mostrando diálogo de validación SII...")
 
-            // Cambiar texto mientras carga
-            if (isLoadingMore) {
-                findViewById<Button>(R.id.buttonCargarMas).text = "Cargando..."
+        val builder = androidx.appcompat.app.AlertDialog.Builder(this)
+        val inflater = layoutInflater
+        val dialogView = inflater.inflate(R.layout.dialog_validacion_sii, null)
+
+        val etClaveSII = dialogView.findViewById<android.widget.EditText>(R.id.etClaveSII)
+        val btnValidar = dialogView.findViewById<android.widget.Button>(R.id.btnValidar)
+
+        builder.setView(dialogView)
+        builder.setTitle("Acceso a Consultas SII")
+        builder.setCancelable(true)
+        val dialog = builder.create()
+
+        btnValidar.setOnClickListener {
+            val claveSII = etClaveSII.text.toString().trim()
+
+            if (claveSII.isEmpty()) {
+                Toast.makeText(this, "Ingrese su clave SII", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            Log.d("DashboardActivity", "Validando acceso SII para navegar a consultas...")
+            validarAccesoSIIParaNavegacion(claveSII, dialog)
+        }
+
+        dialog.show()
+    }
+
+    private fun validarAccesoSIIParaNavegacion(claveSII: String, dialog: androidx.appcompat.app.AlertDialog) {
+        val empresaId = sessionManager.getEmpresaId()
+        val token = sessionManager.getToken()
+
+        if (empresaId == null || token == null) {
+            Toast.makeText(this, "Error: No hay sesión activa", Toast.LENGTH_LONG).show()
+            return
+        }
+
+        Log.d("DashboardActivity", "=== VALIDANDO ACCESO SII ===")
+        Log.d("DashboardActivity", "Empresa ID: $empresaId")
+        Log.d("DashboardActivity", "Token: ***${token.takeLast(8)}")
+
+        val btnValidar = dialog.findViewById<Button>(R.id.btnValidar)
+
+        // Mostrar indicador de carga
+        btnValidar?.isEnabled = false
+        btnValidar?.text = "Validando..."
+
+        lifecycleScope.launch {
+            try {
+                val validacionRequest = mapOf("password_sii" to claveSII)
+                val response = ApiClient.apiService.validarAccesoSII(
+                    authorization = "Bearer $token",
+                    empresaId = empresaId,
+                    validacionRequest = validacionRequest
+                )
+
+                Log.d("DashboardActivity", "Validación SII - Código: ${response.code()}")
+
+                if (response.isSuccessful) {
+                    val responseBody = response.body()
+                    Log.d("DashboardActivity", "✅ Validación SII exitosa: ${responseBody?.success}")
+
+                    dialog.dismiss()
+                    Toast.makeText(this@DashboardActivity, "Acceso SII validado correctamente", Toast.LENGTH_SHORT).show()
+
+                    // Ahora navegar a la pantalla de consultas
+                    val intent = Intent(this@DashboardActivity, ConsultasSIIActivity::class.java)
+                    startActivity(intent)
+
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    Log.e("DashboardActivity", "❌ Error validando SII: $errorBody")
+
+                    // Restaurar botón
+                    btnValidar?.isEnabled = true
+                    btnValidar?.text = "Validar"
+
+                    Toast.makeText(this@DashboardActivity, "Error validando clave SII. Verifique su clave.", Toast.LENGTH_LONG).show()
+                }
+            } catch (e: Exception) {
+                Log.e("DashboardActivity", "Excepción validando SII: ${e.message}", e)
+
+                // Restaurar botón
+                btnValidar?.isEnabled = true
+                btnValidar?.text = "Validar"
+
+                Toast.makeText(this@DashboardActivity, "Error de conexión validando SII", Toast.LENGTH_LONG).show()
             }
         }
     }

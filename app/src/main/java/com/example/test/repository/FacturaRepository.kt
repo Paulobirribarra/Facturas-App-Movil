@@ -65,7 +65,7 @@ class FacturaRepository(private val sessionManager: SessionManager) {
         return apiService.getEmpresas(authHeader)
     }
 
-    suspend fun cambiarEmpresa(empresaId: Int): Response<EmpresaResponse> {
+    suspend fun cambiarEmpresa(empresaId: Int): Response<ApiResponse<Any>> {
         val authHeader = sessionManager.getAuthHeader() ?: throw IllegalStateException("No hay sesión activa")
         return apiService.cambiarEmpresa(empresaId, authHeader)
     }

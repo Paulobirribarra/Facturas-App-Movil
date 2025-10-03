@@ -47,7 +47,7 @@ class EmpresaSelectorActivity : AppCompatActivity() {
         Log.d("EmpresaSelectorActivity", "Configurando RecyclerView de empresas...")
 
         empresasAdapter = EmpresasAdapter(emptyList()) { empresa ->
-            Log.d("EmpresaSelectorActivity", "Usuario seleccionó empresa: ${empresa.razon_social}")
+            Log.d("EmpresaSelectorActivity", "Usuario seleccionó empresa: ${empresa.razonSocial}")
             empresaSelectorViewModel.seleccionarEmpresa(empresa)
         }
 
@@ -70,7 +70,7 @@ class EmpresaSelectorActivity : AppCompatActivity() {
         empresaSelectorViewModel.empresas.observe(this) { empresas ->
             Log.d("EmpresaSelectorActivity", "Empresas observadas: ${empresas.size} empresas disponibles")
             empresas.forEach { empresa ->
-                Log.d("EmpresaSelectorActivity", "  - ${empresa.razon_social} (ID: ${empresa.id}, Rol: ${empresa.rol})")
+                Log.d("EmpresaSelectorActivity", "  - ${empresa.razonSocial} (ID: ${empresa.id}, Rol: ${empresa.rol})")
             }
             empresasAdapter.updateEmpresas(empresas)
         }

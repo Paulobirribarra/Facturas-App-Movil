@@ -40,6 +40,16 @@
             android:label="Detalle de Factura"
             android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
         <activity
+            android:name=".ConsultasSIIActivity"
+            android:exported="false"
+            android:label="Consulta SII"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
+        <activity
+            android:name=".ResultadosSIIActivity"
+            android:exported="false"
+            android:label="Resultados SII"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
+        <activity
             android:name=".MainActivity"
             android:exported="true"
             android:theme="@style/Theme.Test" />

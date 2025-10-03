@@ -1,3 +1,13 @@
 <resources>
     <string name="app_name">test</string>
+
+    <!-- Strings para Consultas SII -->
+    <string name="consultas_sii">Consultas SII</string>
+    <string name="tipo_consulta">Tipo de Consulta</string>
+    <string name="mes">Mes</string>
+    <string name="anio">Año</string>
+    <string name="consultar">Consultar</string>
+    <string name="validar_acceso_sii">Validar acceso SII</string>
+    <string name="clave_sii">Clave SII</string>
+    <string name="validar">Validar</string>
 </resources>

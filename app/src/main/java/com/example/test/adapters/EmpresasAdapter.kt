@@ -29,14 +29,14 @@ class EmpresasAdapter(
     override fun onBindViewHolder(holder: EmpresaViewHolder, position: Int) {
         val empresa = empresas[position]
 
-        Log.d("EmpresasAdapter", "Mostrando empresa: ${empresa.razon_social} (ID: ${empresa.id})")
+        Log.d("EmpresasAdapter", "Mostrando empresa: ${empresa.razonSocial} (ID: ${empresa.id})")
 
-        holder.textEmpresaNombre.text = empresa.razon_social
+        holder.textEmpresaNombre.text = empresa.razonSocial
         holder.textEmpresaRol.text = "Rol: ${empresa.rol}"
         holder.textEmpresaId.text = "ID: ${empresa.id}"
 
         holder.itemView.setOnClickListener {
-            Log.d("EmpresasAdapter", "Empresa seleccionada: ${empresa.razon_social} (ID: ${empresa.id})")
+            Log.d("EmpresasAdapter", "Empresa seleccionada: ${empresa.razonSocial} (ID: ${empresa.id})")
             onEmpresaClick(empresa)
         }
     }
