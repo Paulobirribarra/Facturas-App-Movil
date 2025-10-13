@@ -11,7 +11,10 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.test.network.ApiClient
 import com.example.test.utils.SessionManager
+import com.example.test.utils.SiiAuthManager
+import com.example.test.utils.CamposCriticosManager
 import com.example.test.models.ConsultaSIIResponse
+import com.example.test.models.FacturaSII
 import kotlinx.coroutines.launch
 import com.google.gson.Gson
 
@@ -21,6 +24,8 @@ class ConsultasSIIActivity : AppCompatActivity() {
     private lateinit var npAnio: NumberPicker
     private lateinit var btnConsultar: Button
     private lateinit var sessionManager: SessionManager
+    private lateinit var siiAuthManager: SiiAuthManager
+    private lateinit var camposCriticosManager: CamposCriticosManager
     private val apiService by lazy { ApiClient.apiService }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -32,6 +37,8 @@ class ConsultasSIIActivity : AppCompatActivity() {
         npAnio = findViewById(R.id.npAnio)
         btnConsultar = findViewById(R.id.btnConsultar)
         sessionManager = SessionManager(this)
+        siiAuthManager = SiiAuthManager(this)
+        camposCriticosManager = CamposCriticosManager(this)
 
         npMes.minValue = 1
         npMes.maxValue = 12
@@ -51,7 +58,6 @@ class ConsultasSIIActivity : AppCompatActivity() {
         val empresaId = sessionManager.getEmpresaId()
         val token = sessionManager.getToken()
 
-        // Logs detallados para depuración
         Log.d("ConsultasSII", "=== INICIANDO CONSULTA SII ===")
         Log.d("ConsultasSII", "Tipo de consulta: ${if (tipoConsulta == 0) "VENTAS" else "COMPRAS"}")
         Log.d("ConsultasSII", "Mes seleccionado: $mes")
@@ -65,131 +71,241 @@ class ConsultasSIIActivity : AppCompatActivity() {
             return
         }
 
-        // Ejecutar consulta directamente (la validación SII ya se hizo en Dashboard)
-        ejecutarConsultaSII(tipoConsulta, mes, anio, empresaId, token)
+        // ✅ CRÍTICO: Verificar validación SII antes de consultar
+        if (siiAuthManager.needsSiiValidation(empresaId)) {
+            Log.e("ConsultasSII", "❌ Acceso SII expirado o no válido")
+            Toast.makeText(this, "Su acceso SII ha expirado. Regresando al dashboard para revalidar...", Toast.LENGTH_LONG).show()
+            finish() // Regresar al dashboard para revalidar
+            return
+        }
+
+        val remainingMinutes = siiAuthManager.getRemainingMinutes(empresaId)
+        Log.d("ConsultasSII", "✅ Acceso SII válido - $remainingMinutes minutos restantes")
+
+        // ✅ NUEVO: Advertir sobre posible pérdida de campos críticos
+        camposCriticosManager.verificarYAdvertirSobreescritura { continuar ->
+            if (continuar) {
+                // Usuario confirmó que quiere continuar
+                ejecutarConsultaSII(tipoConsulta, mes, anio, empresaId, token)
+            } else {
+                // Usuario canceló la consulta
+                Log.d("ConsultasSII", "Usuario canceló consulta para evitar pérdida de datos críticos")
+                Toast.makeText(this, "Consulta cancelada por seguridad", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     private fun ejecutarConsultaSII(tipoConsulta: Int, mes: Int, anio: Int, empresaId: Int, token: String) {
-        // Log del endpoint que se va a llamar
+        // ✅ CORREGIDO: Usar endpoints según especificación
         val endpoint = if (tipoConsulta == 0) {
-            "mobile/sii/consultar-ventas"
+            "mobile/ventas/$mes/$anio"
         } else {
-            "mobile/sii/consultar-compras"
+            "mobile/compras/$mes/$anio"
         }
-        Log.d("ConsultasSII", "Endpoint a llamar: $endpoint")
-        Log.d("ConsultasSII", "URL completa: http://192.168.32.1:8000/api/$endpoint")
+
+        Log.d("ConsultasSII", "Endpoint: $endpoint")
         Log.d("ConsultasSII", "Headers - Authorization: Bearer ***${token.takeLast(8)}")
         Log.d("ConsultasSII", "Headers - X-Empresa-ID: $empresaId")
-        Log.d("ConsultasSII", "Query params - mes: $mes, anio: $anio")
 
         // Mostrar indicador de carga y deshabilitar botón
         btnConsultar.isEnabled = false
         btnConsultar.text = "Consultando SII... (puede tomar hasta 3 minutos)"
 
-        // Mostrar toast informativo
         Toast.makeText(this, "Consultando datos del SII. Esto puede tomar varios minutos...", Toast.LENGTH_LONG).show()
 
         lifecycleScope.launch {
             try {
-                Log.d("ConsultasSII", "Ejecutando llamada HTTP...")
-                Log.d("ConsultasSII", "⚠️ ADVERTENCIA: La consulta SII puede tomar hasta 3 minutos")
+                Log.d("ConsultasSII", "Ejecutando consulta SII...")
 
+                // ✅ CORREGIDO: Usar endpoints con parámetros correctos
                 val response = if (tipoConsulta == 0) {
                     apiService.consultarVentasSII(
-                        authorization = "Bearer $token",
-                        empresaId = empresaId,
                         mes = mes,
-                        anio = anio
+                        anio = anio,
+                        authorization = "Bearer $token",
+                        empresaId = empresaId
                     )
                 } else {
                     apiService.consultarComprasSII(
-                        authorization = "Bearer $token",
-                        empresaId = empresaId,
                         mes = mes,
-                        anio = anio
+                        anio = anio,
+                        authorization = "Bearer $token",
+                        empresaId = empresaId
                     )
                 }
 
                 Log.d("ConsultasSII", "=== RESPUESTA RECIBIDA ===")
-                Log.d("ConsultasSII", "Código de respuesta: ${response.code()}")
-                Log.d("ConsultasSII", "Es exitosa: ${response.isSuccessful}")
-                Log.d("ConsultasSII", "Mensaje: ${response.message()}")
-
-                // Log del cuerpo de la respuesta para depuración
-                val responseBody = response.body()
-                if (responseBody != null) {
-                    Log.d("ConsultasSII", "Success: ${responseBody.success}")
-                    Log.d("ConsultasSII", "Message: ${responseBody.message}")
-                    Log.d("ConsultasSII", "Data count: ${responseBody.data?.size ?: 0}")
-                } else {
-                    Log.w("ConsultasSII", "Response body es null")
-                }
-
-                // Log del cuerpo de error si existe (limitado para evitar miles de líneas)
-                if (!response.isSuccessful) {
-                    val errorBody = response.errorBody()?.string()
-                    // Limitar el log del error body para evitar spam
-                    val errorSummary = if (errorBody != null && errorBody.contains("<!DOCTYPE html>")) {
-                        "Error HTML - Posible error 500 del servidor Laravel"
-                    } else {
-                        errorBody?.take(500) ?: "Sin error body"
-                    }
-                    Log.e("ConsultasSII", "Error body: $errorSummary")
-                }
+                Log.d("ConsultasSII", "Código: ${response.code()}")
+                Log.d("ConsultasSII", "Exitosa: ${response.isSuccessful}")
 
                 if (response.isSuccessful) {
                     val body = response.body()
+                    Log.d("ConsultasSII", "Body success: ${body?.success}")
+                    Log.d("ConsultasSII", "Body message: ${body?.message}")
+
                     if (body?.success == true) {
-                        Log.d("ConsultasSII", "✅ Consulta exitosa, navegando a resultados...")
-                        val intent = Intent(this@ConsultasSIIActivity, ResultadosSIIActivity::class.java)
-                        val gson = Gson()
-                        intent.putExtra("resultados", gson.toJson(body))
-                        startActivity(intent)
+                        // ✅ Procesar respuesta exitosa
+                        val facturasList = procesarRespuestaSII(body, tipoConsulta)
+
+                        if (facturasList.isNotEmpty()) {
+                            Log.d("ConsultasSII", "✅ Consulta exitosa - ${facturasList.size} facturas procesadas")
+
+                            // Mostrar información de almacenamiento si está disponible
+                            body.almacenamiento?.let { almacenamiento ->
+                                val mensaje = "Procesadas: ${almacenamiento.totalProcesadas}, " +
+                                            "Nuevas: ${almacenamiento.nuevasInsertadas}, " +
+                                            "Actualizadas: ${almacenamiento.actualizadas}"
+                                Log.d("ConsultasSII", "Almacenamiento: $mensaje")
+                                Toast.makeText(this@ConsultasSIIActivity, mensaje, Toast.LENGTH_SHORT).show()
+                            }
+
+                            // Navegar a resultados
+                            navegarAResultados(body, facturasList)
+                        } else {
+                            Log.w("ConsultasSII", "⚠️ Consulta exitosa pero sin facturas")
+                            Toast.makeText(this@ConsultasSIIActivity, "Consulta exitosa pero no se encontraron facturas para el período seleccionado", Toast.LENGTH_LONG).show()
+                        }
                     } else {
                         Log.e("ConsultasSII", "❌ Consulta falló - Success: false")
                         Toast.makeText(this@ConsultasSIIActivity, "Error: ${body?.message ?: "Sin datos"}", Toast.LENGTH_LONG).show()
                     }
                 } else {
-                    Log.e("ConsultasSII", "❌ Error HTTP ${response.code()}: ${response.message()}")
-                    when (response.code()) {
-                        401 -> Toast.makeText(this@ConsultasSIIActivity, "Error de autenticación (401) - Token inválido", Toast.LENGTH_LONG).show()
-                        403 -> {
-                            val errorBody = response.errorBody()?.string()
-                            if (errorBody?.contains("SII_ACCESS_REQUIRED") == true) {
-                                Toast.makeText(this@ConsultasSIIActivity, "Acceso SII expirado. Regresando al Dashboard...", Toast.LENGTH_SHORT).show()
-                                finish()
-                            } else {
-                                Toast.makeText(this@ConsultasSIIActivity, "Error de permisos (403)", Toast.LENGTH_LONG).show()
-                            }
-                        }
-                        404 -> Toast.makeText(this@ConsultasSIIActivity, "Error (404) - Endpoint no encontrado", Toast.LENGTH_LONG).show()
-                        500 -> Toast.makeText(this@ConsultasSIIActivity, "Error del servidor (500)", Toast.LENGTH_LONG).show()
-                        else -> Toast.makeText(this@ConsultasSIIActivity, "Error en la consulta SII ${response.code()}", Toast.LENGTH_LONG).show()
+                    // ✅ Manejo simplificado de errores
+                    val errorBody = response.errorBody()?.string()
+                    Log.e("ConsultasSII", "❌ HTTP ${response.code()}: ${response.message()}")
+
+                    if (errorBody != null && errorBody.length < 1000) {
+                        Log.e("ConsultasSII", "Error body: $errorBody")
                     }
+
+                    manejarErrorHTTP(response.code(), errorBody)
                 }
             } catch (e: Exception) {
-                Log.e("ConsultasSII", "❌ EXCEPCIÓN: ${e.message}", e)
-
-                // Manejar diferentes tipos de timeouts
-                when {
-                    e.message?.contains("timeout", ignoreCase = true) == true -> {
-                        Toast.makeText(this@ConsultasSIIActivity,
-                            "Timeout: La consulta SII está tomando más tiempo del esperado. Intente nuevamente.",
-                            Toast.LENGTH_LONG).show()
-                    }
-                    e.message?.contains("connect", ignoreCase = true) == true -> {
-                        Toast.makeText(this@ConsultasSIIActivity,
-                            "Error de conexión. Verifique su conexión a internet.",
-                            Toast.LENGTH_LONG).show()
-                    }
-                    else -> {
-                        Toast.makeText(this@ConsultasSIIActivity, "Error: ${e.message}", Toast.LENGTH_LONG).show()
-                    }
-                }
+                Log.e("ConsultasSII", "❌ Excepción: ${e.message}", e)
+                manejarExcepcion(e)
             } finally {
-                // Restaurar el botón sin importar si fue exitoso o falló
+                // Restaurar el botón
                 btnConsultar.isEnabled = true
                 btnConsultar.text = "Consultar"
+            }
+        }
+    }
+
+    /**
+     * ✅ Navega a resultados mostrando análisis de campos críticos
+     */
+    private fun navegarAResultados(body: ConsultaSIIResponse, facturasList: List<FacturaSII>) {
+        // ✅ NUEVO: Analizar y mostrar resultados de campos críticos
+        body.almacenamiento?.let { almacenamiento ->
+            camposCriticosManager.mostrarResultadosDetallados(almacenamiento) {
+                // Continuar con la navegación después de mostrar el análisis
+                navegarAResultadosInterno(body, facturasList)
+            }
+        } ?: run {
+            // Si no hay información de almacenamiento, navegar directamente
+            navegarAResultadosInterno(body, facturasList)
+        }
+    }
+
+    /**
+     * ✅ Navegación interna a resultados
+     */
+    private fun navegarAResultadosInterno(body: ConsultaSIIResponse, facturasList: List<FacturaSII>) {
+        Log.d("ConsultasSII", "Navegando a ResultadosSIIActivity con ${facturasList.size} facturas")
+
+        val intent = Intent(this, ResultadosSIIActivity::class.java)
+        val gson = Gson()
+
+        // Crear respuesta compatible para ResultadosSIIActivity
+        val responseCompatible = ConsultaSIIResponse(
+            success = true,
+            message = body.message,
+            data = null,
+            almacenamiento = body.almacenamiento,
+            timestamp = body.timestamp
+        )
+
+        intent.putExtra("resultados", gson.toJson(responseCompatible))
+        intent.putExtra("facturas_list", gson.toJson(facturasList))
+
+        // ✅ NUEVO: Agregar información adicional para análisis
+        body.almacenamiento?.let { almacenamiento ->
+            intent.putExtra("resumen_rapido", camposCriticosManager.crearResumenRapido(almacenamiento))
+        }
+
+        startActivity(intent)
+    }
+
+    /**
+     * ✅ NUEVO: Procesa la estructura anidada de datos SII según especificación
+     */
+    private fun procesarRespuestaSII(response: ConsultaSIIResponse, tipoConsulta: Int): List<FacturaSII> {
+        val facturasList = mutableListOf<FacturaSII>()
+
+        try {
+            when (tipoConsulta) {
+                0 -> { // Ventas
+                    response.data?.ventas?.detalleVentas?.forEach { detalle ->
+                        val factura = FacturaSII.fromDetalleVenta(detalle)
+                        facturasList.add(factura)
+                    }
+                    Log.d("ConsultasSII", "Procesadas ${facturasList.size} facturas de venta")
+                }
+                1 -> { // Compras
+                    response.data?.compras?.detalleCompras?.forEach { detalle ->
+                        val factura = FacturaSII.fromDetalleCompra(detalle)
+                        facturasList.add(factura)
+                    }
+                    Log.d("ConsultasSII", "Procesadas ${facturasList.size} facturas de compra")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("ConsultasSII", "Error procesando respuesta SII: ${e.message}", e)
+        }
+
+        return facturasList
+    }
+
+    /**
+     * ✅ MEJORADO: Manejo específico de errores HTTP
+     */
+    private fun manejarErrorHTTP(codigo: Int, errorBody: String?) {
+        when (codigo) {
+            401 -> {
+                Toast.makeText(this, "Error de autenticación (401) - Token inválido", Toast.LENGTH_LONG).show()
+                // Podríamos redirigir al login aquí
+            }
+            403 -> {
+                if (errorBody?.contains("SII_ACCESS_REQUIRED") == true) {
+                    Toast.makeText(this, "Acceso SII expirado. Regresando al Dashboard para revalidar...", Toast.LENGTH_SHORT).show()
+                    siiAuthManager.clearValidation() // Limpiar validación expirada
+                    finish()
+                } else {
+                    Toast.makeText(this, "Error de permisos (403)", Toast.LENGTH_LONG).show()
+                }
+            }
+            404 -> Toast.makeText(this, "Error (404) - Endpoint no encontrado. Verifique la configuración del servidor.", Toast.LENGTH_LONG).show()
+            500 -> Toast.makeText(this, "Error del servidor (500) - Problema en el backend", Toast.LENGTH_LONG).show()
+            else -> Toast.makeText(this, "Error en la consulta SII: HTTP $codigo", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    /**
+     * ✅ MEJORADO: Manejo específico de excepciones
+     */
+    private fun manejarExcepcion(e: Exception) {
+        when {
+            e.message?.contains("timeout", ignoreCase = true) == true -> {
+                Toast.makeText(this, "Timeout: La consulta SII tardó más de lo esperado. El servidor puede estar procesando muchas consultas.", Toast.LENGTH_LONG).show()
+            }
+            e.message?.contains("connect", ignoreCase = true) == true -> {
+                Toast.makeText(this, "Error de conexión. Verifique su conexión a internet y que el servidor esté disponible.", Toast.LENGTH_LONG).show()
+            }
+            e.message?.contains("JSON", ignoreCase = true) == true -> {
+                Toast.makeText(this, "Error procesando respuesta del servidor. Formato de datos inesperado.", Toast.LENGTH_LONG).show()
+            }
+            else -> {
+                Toast.makeText(this, "Error inesperado: ${e.message}", Toast.LENGTH_LONG).show()
             }
         }
     }

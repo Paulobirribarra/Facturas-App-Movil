@@ -73,11 +73,21 @@ object ApiClient {
                     throw IllegalStateException("ApiClient has not been initialized. Call ApiClient.initialize(context) first.")
                 }
 
+                // ✅ NUEVO: Configurar Gson con deserializadores personalizados para manejar campos numéricos vacíos
+                val gson = com.google.gson.GsonBuilder()
+                    .registerTypeAdapter(Double::class.java, com.example.test.models.SafeDoubleDeserializer())
+                    .registerTypeAdapter(Int::class.java, com.example.test.models.SafeIntDeserializer())
+                    .registerTypeAdapter(Int::class.javaObjectType, com.example.test.models.SafeNullableIntDeserializer())
+                    .setLenient() // Permite JSON menos estricto
+                    .create()
+
                 _retrofit = Retrofit.Builder()
                     .baseUrl(baseUrl!!)
                     .client(okHttpClient)
-                    .addConverterFactory(GsonConverterFactory.create())
+                    .addConverterFactory(GsonConverterFactory.create(gson)) // Usar Gson personalizado
                     .build()
+
+                Log.d("ApiClient", "✅ Retrofit configurado con deserializadores seguros para campos numéricos")
             }
             return _retrofit!!
         }

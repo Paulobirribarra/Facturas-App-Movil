@@ -1,7 +1,10 @@
 # Archivos de Android Studio
 *.iml
-.gradle
-/local.properties
+# Ignorar por completo la carpeta de configuración del IDE
+.idea/
+# Asegurar formato de carpeta para Gradle local
+.gradle/
+local.properties
 /.idea/caches
 /.idea/libraries
 /.idea/modules.xml

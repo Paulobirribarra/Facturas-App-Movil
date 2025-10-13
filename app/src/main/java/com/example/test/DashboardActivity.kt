@@ -17,6 +17,7 @@ import com.example.test.adapters.FacturasAdapter
 import com.example.test.models.User
 import com.example.test.network.ApiClient
 import com.example.test.utils.SessionManager
+import com.example.test.utils.SiiAuthManager
 import com.example.test.viewmodel.DashboardViewModel
 import kotlinx.coroutines.launch
 
@@ -25,12 +26,14 @@ class DashboardActivity : AppCompatActivity() {
     private val dashboardViewModel: DashboardViewModel by viewModels()
     private lateinit var facturasAdapter: FacturasAdapter
     private lateinit var sessionManager: SessionManager
+    private lateinit var siiAuthManager: SiiAuthManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_dashboard)
 
         sessionManager = SessionManager(this)
+        siiAuthManager = SiiAuthManager(this)
         setupViews()
         setupRecyclerView()
         setupObservers()
@@ -71,8 +74,24 @@ class DashboardActivity : AppCompatActivity() {
 
         findViewById<Button>(R.id.buttonConsultaSII).setOnClickListener {
             Log.d("DashboardActivity", "Botón 'Consulta SII' presionado")
-            // Primero validar acceso SII antes de navegar
-            mostrarDialogoValidacionSII()
+            val empresaId = sessionManager.getEmpresaId()
+
+            if (empresaId == null) {
+                Toast.makeText(this, "Seleccione una empresa primero", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            // Verificar si necesita validación SII
+            if (siiAuthManager.needsSiiValidation(empresaId)) {
+                mostrarDialogoValidacionSII()
+            } else {
+                // Ya tiene acceso válido, navegar directamente
+                val remainingMinutes = siiAuthManager.getRemainingMinutes(empresaId)
+                Toast.makeText(this, "Acceso SII válido ($remainingMinutes min restantes)", Toast.LENGTH_SHORT).show()
+
+                val intent = Intent(this, ConsultasSIIActivity::class.java)
+                startActivity(intent)
+            }
         }
     }
 
@@ -238,8 +257,11 @@ class DashboardActivity : AppCompatActivity() {
                     val responseBody = response.body()
                     Log.d("DashboardActivity", "✅ Validación SII exitosa: ${responseBody?.success}")
 
+                    // ✅ CRÍTICO: Guardar el estado de validación con SiiAuthManager
+                    siiAuthManager.markAsValidated(empresaId)
+
                     dialog.dismiss()
-                    Toast.makeText(this@DashboardActivity, "Acceso SII validado correctamente", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@DashboardActivity, "Acceso SII validado por 30 minutos", Toast.LENGTH_SHORT).show()
 
                     // Ahora navegar a la pantalla de consultas
                     val intent = Intent(this@DashboardActivity, ConsultasSIIActivity::class.java)

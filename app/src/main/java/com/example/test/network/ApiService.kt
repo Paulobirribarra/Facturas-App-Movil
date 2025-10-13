@@ -52,21 +52,40 @@ interface ApiService {
         @Header("Authorization") authorization: String
     ): Response<ApiResponse<Any>>
 
-    // Consultas SII - Endpoints reales según documentación
-    @GET("mobile/sii/consultar-ventas")
+    // Consultas SII - Endpoints corregidos según especificación
+    @GET("mobile/ventas/{mes}/{anio}")
     suspend fun consultarVentasSII(
+        @Path("mes") mes: Int,
+        @Path("anio") anio: Int,
         @Header("Authorization") authorization: String,
-        @Header("X-Empresa-ID") empresaId: Int,
+        @Header("X-Empresa-ID") empresaId: Int
+    ): Response<ConsultaSIIResponse>
+
+    @GET("mobile/compras/{mes}/{anio}")
+    suspend fun consultarComprasSII(
+        @Path("mes") mes: Int,
+        @Path("anio") anio: Int,
+        @Header("Authorization") authorization: String,
+        @Header("X-Empresa-ID") empresaId: Int
+    ): Response<ConsultaSIIResponse>
+
+    // Consultas diarias SII
+    @GET("mobile/sii/consultar-ventas")
+    suspend fun consultarVentasDiarias(
+        @Query("dia") dia: Int,
         @Query("mes") mes: Int,
-        @Query("anio") anio: Int
+        @Query("anio") anio: Int,
+        @Header("Authorization") authorization: String,
+        @Header("X-Empresa-ID") empresaId: Int
     ): Response<ConsultaSIIResponse>
 
     @GET("mobile/sii/consultar-compras")
-    suspend fun consultarComprasSII(
-        @Header("Authorization") authorization: String,
-        @Header("X-Empresa-ID") empresaId: Int,
+    suspend fun consultarComprasDiarias(
+        @Query("dia") dia: Int,
         @Query("mes") mes: Int,
-        @Query("anio") anio: Int
+        @Query("anio") anio: Int,
+        @Header("Authorization") authorization: String,
+        @Header("X-Empresa-ID") empresaId: Int
     ): Response<ConsultaSIIResponse>
 
     // Validación SII - Endpoints reales

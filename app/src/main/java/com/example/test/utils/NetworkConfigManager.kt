@@ -38,7 +38,7 @@ object NetworkConfigManager {
     private fun getDefaultUrl(): String {
         return when {
             isEmulator() -> "http://10.0.2.2:8000/api/"
-            BuildConfig.DEBUG -> "http://192.168.32.1:8000/api/" // Tu IP actual
+            BuildConfig.DEBUG -> "http://192.168.31.156:8000/api/" // Tu IP actual
             else -> "https://tu-api-produccion.com/api/"
         }
     }
